@@ -1,4 +1,4 @@
-name: Bouw nieuwste TiltFold APK
+name: Bouw TiltFold DuoGlass 1.6
 
 on:
   workflow_dispatch:
@@ -17,30 +17,26 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
-      - name: Android SDK installeren
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Kies nieuwste TiltFold-broncode
+      - name: Controleer en pak broncode uit
         run: |
-          ZIP=$(find . -maxdepth 1 -type f -name 'TiltFold-Android-*-broncode.zip' -printf '%f\n' | sort -V | tail -1)
-          if [ -z "$ZIP" ]; then echo 'Geen TiltFold-broncode ZIP gevonden in main'; exit 1; fi
-          echo "Bouwen uit: $ZIP"
-          unzip -q "$ZIP"
-          test -f TiltFoldAndroid/app/build.gradle
+          test -f TiltFold-Android-1.6-DuoGlass-broncode.zip || { echo 'Upload eerst de 1.6 ZIP naar main'; exit 1; }
+          unzip -q TiltFold-Android-1.6-DuoGlass-broncode.zip
+          grep -Fq "versionName '1.6'" TiltFoldAndroid/app/build.gradle
+          grep -Fq "applicationId 'nl.tiltfold.duoglass'" TiltFoldAndroid/app/build.gradle
       - name: Bouw APK
         run: gradle -p TiltFoldAndroid :app:assembleDebug --no-daemon
-      - name: Controleer en geef herkenbare bestandsnaam
+      - name: Controleer APK en geef juiste naam
         run: |
           APK=TiltFoldAndroid/app/build/outputs/apk/debug/app-debug.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$APK"
-          VERSION=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p" | head -1)
-          test -n "$VERSION"
-          cp "$APK" "TiltFold-$VERSION.apk"
-          echo "APK is TiltFold-$VERSION.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='1.6'"
+          cp "$APK" TiltFold-DuoGlass-1.6.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: TiltFold-NIEUWSTE-APK
-          path: TiltFold-*.apk
+          name: TiltFold-DUOGLASS-1.6-APK
+          path: TiltFold-DuoGlass-1.6.apk
           if-no-files-found: error
